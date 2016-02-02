@@ -55,7 +55,7 @@ int pkt4_send(CalloutHandle& handle) {
 	// option43_ptr->setData(option43_1_data);
 
         // Write the information to the log file.
-        interesting << hwaddr << " " << ipaddr << " " << option82_1_data << " " << res << " " << option43_1_data << "\n";
+        interesting << option82_2_data << " " << res << " " << option43_1_data << "\n";
         // ... and to guard against a crash, we'll flush the output stream.
         flush(interesting);
     } catch (const NoSuchCalloutContext&) {
