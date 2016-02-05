@@ -11,16 +11,6 @@ using namespace isc::hooks;
 using namespace std;
 extern "C" {
 
-// 
-void pkt4_replaceAll(std::string& str, const std::string& from, const std::string& to) {
-    if(from.empty())
-        return;
-    size_t start_pos = 0;
-    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
-        str.replace(start_pos, from.length(), to);
-        start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
-    }
-}
 // This callout is called at the "pkt4_send" hook.
 int pkt4_send(CalloutHandle& handle) {
     try {
@@ -57,14 +47,18 @@ int pkt4_send(CalloutHandle& handle) {
 	}
 
 	// Sanitize string before using it
-        regex e ("[^A-z0-9-]"); 
-	res = std::regex_replace (res,e,"_");
+        regex sanitize ("[^A-z0-9-]"); 
+	res = std::regex_replace (res, sanitize, "_");
 
 	// Replace "variable" in original packet data
 	// 
-	// "option_data": { "data": "foo_bar_%OPTION82_2%_baz"; }
+	// "option_data": { "data": "foo_bar_%OPTION82_1%_baz"; }
 	//
-	pkt4_replaceAll(option43_1_data, "%OPTION82_2%", res);
+	regex opt82_1 ("%OPTION82_1%");
+	regex opt82_2 ("%OPTION82_2%");
+
+	option43_1_data = regex_replace (option43_1_data, opt82_1, res);
+	option43_1_data = regex_replace (option43_1_data, opt82_2, res);
 
 	// TODO: How to actually insert the new string into the packet?
 	//
