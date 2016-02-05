@@ -30,9 +30,9 @@ int pkt4_send(CalloutHandle& handle) {
 	OptionPtr option43_1_ptr = option43_ptr->getOption(1);
 
 	// Decode options to strings
-	string option82_1_data = option82_1_ptr->toString();
-	string option82_2_data = option82_2_ptr->toString();
-	string option43_1_data = option43_1_ptr->toString();
+	string option82_1_data = option82_1_ptr->toText();
+	string option82_2_data = option82_2_ptr->toText();
+	string option43_1_data = option43_1_ptr->toText();
 
 	// The string contains 19 bytes of header-data...
 	option82_2_data = option82_2_data.substr(19,  string::npos);
