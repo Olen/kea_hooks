@@ -41,14 +41,14 @@ int pkt4_send(CalloutHandle& handle) {
 	// Decode :-separated string of ascii-codes
         stringstream ss(option82_2_data);
         string token;
-        while(std::getline(ss, token, ':')) 
+        while(getline(ss, token, ':')) 
         {
                 res += strtoul(token.c_str(), NULL, 16);
 	}
 
 	// Sanitize string before using it
         regex sanitize ("[^A-z0-9-]"); 
-	res = std::regex_replace (res, sanitize, "_");
+	res = regex_replace (res, sanitize, "_");
 
 	// Replace "variable" in original packet data
 	// 
