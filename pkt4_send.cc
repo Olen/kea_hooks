@@ -11,6 +11,7 @@ using namespace isc::hooks;
 using namespace std;
 extern "C" {
 
+// 
 void pkt4_replaceAll(std::string& str, const std::string& from, const std::string& to) {
     if(from.empty())
         return;
@@ -28,30 +29,45 @@ int pkt4_send(CalloutHandle& handle) {
 
 	string res;
 
+	// Get main options
 	OptionPtr option82_ptr = response4_ptr->getOption(82);
 	OptionPtr option43_ptr = response4_ptr->getOption(43);
 
+	// Get sub options
 	OptionPtr option82_1_ptr = option82_ptr->getOption(1);
 	OptionPtr option82_2_ptr = option82_ptr->getOption(2);
+
 	OptionPtr option43_1_ptr = option43_ptr->getOption(1);
 
+	// Decode options to strings
 	string option82_1_data = option82_1_ptr->toString();
 	string option82_2_data = option82_2_ptr->toString();
 	string option43_1_data = option43_1_ptr->toString();
 
+	// The string contains 19 bytes of header-data...
 	option82_2_data = option82_2_data.substr(19,  string::npos);
 
+
+	// Decode :-separated string of ascii-codes
         stringstream ss(option82_2_data);
         string token;
-        regex e ("[^A-z0-9-]"); 
         while(std::getline(ss, token, ':')) 
         {
                 res += strtoul(token.c_str(), NULL, 16);
 	}
+
 	// Sanitize string before using it
+        regex e ("[^A-z0-9-]"); 
 	res = std::regex_replace (res,e,"_");
 
+	// Replace "variable" in original packet data
+	// 
+	// "option_data": { "data": "foo_bar_%OPTION82_2%_baz"; }
+	//
 	pkt4_replaceAll(option43_1_data, "%OPTION82_2%", res);
+
+	// TODO: How to actually insert the new string into the packet?
+	//
 	// option43_ptr->setData(option43_1_data);
 
         // Write the information to the log file.
@@ -64,7 +80,7 @@ int pkt4_send(CalloutHandle& handle) {
         // and dismiss the exception.
         interesting << "Que Pasa\n";
         flush(interesting);
-     }
+    }
     return (0);
 }
 
