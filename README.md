@@ -8,17 +8,17 @@ g++ -std=c++11 -I /usr/include/kea -L /usr/lib64 -fpic -shared -o options_to_opt
 
 ```
 	"option-def": [
-       	{
-       	        "name": "config-file-name",
-       	        "code": 1,
-       	        "space": "vendor-encapsulated-options-space",
-       	        "type": "string",
-       	        "array": false,
-       	        "record-types": "",
-       	        "encapsulate": ""
-       	},
+	{
+		"name": "config-file-name",
+		"code": 1,
+		"space": "vendor-encapsulated-options-space",
+		"type": "string",
+		"array": false,
+		"record-types": "",
+		"encapsulate": ""
+	},
 
-	(...)
+(...)
   
 	"option-data": [
 	{
