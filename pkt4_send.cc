@@ -51,7 +51,7 @@ int pkt4_send(CalloutHandle& handle) {
 	// Sanitize string before using it
 	res = std::regex_replace (res,e,"_");
 
-	pkt4_replaceAll(option43_1_data, "%OPTION82_2%", res);
+	pkt4_replaceAll(option43_1_data, "#OPTION82_2#", res);
 	// option43_ptr->setData(option43_1_data);
 
         // Write the information to the log file.
