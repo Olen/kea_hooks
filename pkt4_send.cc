@@ -54,8 +54,8 @@ int pkt4_send(CalloutHandle& handle) {
 	// 
 	// "option_data": { "data": "foo_bar_%OPTION82_1%_baz"; }
 	//
-	regex opt82_1 ("%OPTION82_1%");
-	regex opt82_2 ("%OPTION82_2%");
+	regex opt82_1 ("@OPTION82_1@");
+	regex opt82_2 ("@OPTION82_2@");
 
 	option43_1_data = regex_replace (option43_1_data, opt82_1, res);
 	option43_1_data = regex_replace (option43_1_data, opt82_2, res);
