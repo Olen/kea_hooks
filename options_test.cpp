@@ -81,8 +81,9 @@ int main()
 	options_variables["IPADDR"] = "ipaddr";
 
 	// ... and generate a few variants that might be useful
-	options_variables["HWADDR_CISCO"] = "hwaddr_cisco";
-	options_variables["IPADDR_HEX"] = "ipaddr_hex";
+	// Note that all values here are strings
+	options_variables["HWADDR_CISCO"] = "hwaddr_cisco";	// 1234.5678.90ab
+	options_variables["IPADDR_HEX"] = "ipaddr_hex";		// c39f0a01
 
 
 	// Then we search the out-options for the identificator
