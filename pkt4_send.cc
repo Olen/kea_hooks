@@ -38,9 +38,8 @@ int pkt4_send(CalloutHandle& handle) {
 	map<int,map<int,bool>> options_in;
 	map<int,map<int,bool>> options_out;
 
-	// Debug
-	interesting << "1\n";
-        flush(interesting);
+	// TODO:
+	// Add proper logging, not use the "interesting" file
 
 	// Options we will read
 	options_in[82][1] = 1;
@@ -53,13 +52,8 @@ int pkt4_send(CalloutHandle& handle) {
 	// Also notice that options without sub options will use sub option id = 0.  
 	options_out[43][1] = 1;
 	options_out[43][2] = 1;
+	// TODO: Add more options we can write to (hostname, others?)
 	options_out[DHO_BOOT_FILE_NAME][0] = 1;
-
-
-	// Debug
-	interesting << "2" << DHO_BOOT_FILE_NAME << "\n";
-        flush(interesting);
-
 
 	// Get the option-values from the dhcp-request
 	for ( const auto &opt_i : options_in ) {
@@ -71,12 +65,17 @@ int pkt4_send(CalloutHandle& handle) {
         		flush(interesting);
 			if (sub_i.first > 0) {
 				sub_code = sub_i.first;
-				options_variables["OPTION_" + to_string(opt_code) + "_" + to_string(sub_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
 				// Debug
-				interesting << "sc: " << to_string(sub_code) << "\n";
+				interesting << "Setting OPTION_" << to_string(opt_code) << "_" << to_string(sub_code) << "\n";
         			flush(interesting);
+
+				options_variables["OPTION_" + to_string(opt_code) + "_" + to_string(sub_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
 			}
 			else {
+				// Debug
+				interesting << "Setting OPTION_" << to_string(opt_code) << "\n";
+        			flush(interesting);
+
 				options_variables["OPTION_" + to_string(opt_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
 			}
 		}
@@ -85,6 +84,7 @@ int pkt4_send(CalloutHandle& handle) {
 
 	// Also get some other variables
 	// Note that all values here are strings so some might have to be casted
+	// TODO: Really add these...
 	options_variables["HWADDR"] = "hwaddr";
 	options_variables["IPADDR"] = "ipaddr";
 
@@ -93,15 +93,14 @@ int pkt4_send(CalloutHandle& handle) {
 	options_variables["IPADDR_HEX"] = "ipaddr_hex";		// c39f0a01
 
 	// Debug
+	interesting << "All defined options and variables:\n";
+        flush(interesting);
 	for ( const auto &ov : options_variables) {
 		string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
 		string res = ov.second;
 		interesting << "ov: " << var << " = " << res << "\n";
         	flush(interesting);
 	}
-	interesting << "3\n";
-        flush(interesting);
-
 
 	// Then we search the out-options for the placeholder
 	for ( const auto &opt_o : options_out ) {
@@ -109,27 +108,20 @@ int pkt4_send(CalloutHandle& handle) {
 			string option_data;
 			int opt_code = opt_o.first;
 			int sub_code = 0;
-			// Debug
-			interesting << "od: " << to_string(opt_code) << "\n";
-        		flush(interesting);
 			if (sub_o.first > 0) {
 				sub_code = sub_o.first;
-				// Debug
-				interesting << "sd: " << to_string(sub_code) << "\n";
-        			flush(interesting);
 			}
+			// Debug
+			interesting << "Getting writable option " << to_string(opt_code) << "." << to_string(sub_code) << "\n";
+        		flush(interesting);
 			// This must NOT be sanitized, as it might contain the placeholder-identificator which is supposed to be replaced later...
 			option_data = get4Option(response4_ptr, opt_code, sub_code, false);
-			// Debug
-			interesting << "od: " << option_data << "\n";
-        		flush(interesting);
 
 			for ( const auto &ov : options_variables) {
 				string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
 				string res = ov.second;
 
        				if (option_data.find(var) != std::string::npos) {
-					
 					// Debug
 					interesting << "Replace " << var << " with " << res << " in option " << option_data  << "\n";
         				flush(interesting);
