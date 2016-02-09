@@ -12,7 +12,7 @@ The DHCPREQUEST comes in with an Option 82:
   type=082, len=044:,
 options:
     type=001, len=019: "Router01:ge-0/0/4:1" (string)
-    type=002, len=017: "<span style='color: green;'>customer-id-10000</span>" (string)
+    type=002, len=017: "<b>customer-id-10000</b>" (string)
 </pre>
 
 And the DHCPREPLY will contain
@@ -21,7 +21,7 @@ And the DHCPREPLY will contain
 (...)
   type=043, len=056:,
 options:
-    type=001, len=032: "path/to/<span style='color: green;'>config-customer-id-10000</span>" (string)
+    type=001, len=032: "path/to/<b>config-customer-id-10000</b>" (string)
 </pre>
 
 
