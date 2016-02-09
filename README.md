@@ -9,6 +9,12 @@ The config below will take the string from sub option 002 in an option 82 reques
 ## Example config
 
 ```
+        "hooks-libraries": [
+        {
+                "library": "/full/path/to/options_to_options.so"
+        }],
+
+(...)
 	"option-def": [
 	{
 		"name": "config-file-name",
