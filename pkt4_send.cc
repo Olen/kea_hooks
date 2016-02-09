@@ -1,13 +1,13 @@
 #include <hooks/hooks.h>
 #include <dhcp/pkt4.h>
 #include <dhcp/option_string.h>
-// #include <dhcp/option_custom.h>
 #include "library_common.h"
 #include <string>
 #include <sstream>
 #include <iostream>
 #include <regex>
 #include <vector>
+#include <map>
 
 
 using namespace isc::dhcp;
@@ -17,7 +17,9 @@ using namespace std;
 
 extern "C" {
 
-void add4Option(Pkt4Ptr& response, uint8_t opt_code, std::string& opt_value, uint8_t sub_code = 0);
+void add4Option(Pkt4Ptr& response, uint8_t opt_code, uint8_t sub_code, std::string& opt_value);
+void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string option_data, string placeholder, string replace_with);
+string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bool sanitize = 1);
 
 // This callout is called at the "pkt4_send" hook.
 int pkt4_send(CalloutHandle& handle) {
@@ -25,116 +27,122 @@ int pkt4_send(CalloutHandle& handle) {
         Pkt4Ptr response4_ptr;
         handle.getArgument("response4", response4_ptr);
 
-	string res;
+	// Identificator for variables in kea.conf
+	// IE @HWADDR@ 
+	string PRE_POST_FIX = "@";
 
-	// Get main options
-	// OptionPtr option82_ptr = response4_ptr->getOption(82);
-	string option82_1_data = response4_ptr->getOption(82)->getOption(1)->toString();
-	string option82_2_data = response4_ptr->getOption(82)->getOption(2)->toString();
+	// First we dont want to define a lot of possible variables, so we use a map
+	map<string,string> options_variables;
 
+	// Not sure if map is the best way to do this, though...
+	map<int,map<int,bool>> options_in;
+	map<int,map<int,bool>> options_out;
+
+	// Debug
 	interesting << "1\n";
         flush(interesting);
 
-	/*
+	// Options we will read
+	options_in[82][1] = 1;
+	options_in[82][2] = 1;
+	options_in[82][6] = 1;
 
-	// Get sub options
-	OptionPtr option82_1_ptr = option82_ptr->getOption(1);
-	OptionPtr option82_2_ptr = option82_ptr->getOption(2);
-	string option82_1_data = option82_1_ptr->toText();
-	string option82_2_data = option82_2_ptr->toText();
-	*/
+	// Options we might write to
+	// These are the options that will be scanned for "variables" or "placeholders". Just add all _potential_ options here, as nothing is done if the placceholder is not present.
+	// You can use the pre defined option names 
+	// Also notice that options without sub options will use sub option id = 0.  
+	options_out[43][1] = 1;
+	options_out[43][2] = 1;
+	options_out[DHO_BOOT_FILE_NAME][0] = 1;
 
-	OptionPtr option43_ptr = response4_ptr->getOption(43);
-	interesting << "2\n";
+
+	// Debug
+	interesting << "2" << DHO_BOOT_FILE_NAME << "\n";
         flush(interesting);
-	if (!option43_ptr) {
-		interesting << "END\n";
-        	flush(interesting);
-		return (0);
+
+
+	// Get the option-values from the dhcp-request
+	for ( const auto &opt_i : options_in ) {
+		for ( const auto &sub_i : options_in[opt_i.first]) {
+			int opt_code = opt_i.first;
+			int sub_code = 0;
+			// Debug
+			interesting << "oc: " << to_string(opt_code) << "\n";
+        		flush(interesting);
+			if (sub_i.first > 0) {
+				sub_code = sub_i.first;
+				options_variables["OPTION_" + to_string(opt_code) + "_" + to_string(sub_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
+				// Debug
+				interesting << "sc: " << to_string(sub_code) << "\n";
+        			flush(interesting);
+			}
+			else {
+				options_variables["OPTION_" + to_string(opt_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
+			}
+		}
 	}
 
-	OptionPtr option43_1_ptr = response4_ptr->getOption(43)->getOption(1);
-	string option43_1_data = option43_1_ptr->toString();
-	interesting << "X\n";
-        flush(interesting);
 
+	// Also get some other variables
+	// Note that all values here are strings so some might have to be casted
+	options_variables["HWADDR"] = "hwaddr";
+	options_variables["IPADDR"] = "ipaddr";
 
-	/* 
-	OptionPtr option43_ptr = response4_ptr->getOption(43);
-	OptionPtr option43_1_ptr = option43_ptr->getOption(1);
+	// ... and generate a few variants that might be useful
+	options_variables["HWADDR_CISCO"] = "hwaddr_cisco";	// 1234.5678.90ab
+	options_variables["IPADDR_HEX"] = "ipaddr_hex";		// c39f0a01
 
-	// Decode options to strings
-	string option43_1_data = option43_1_ptr->toText();
-	*/ 
-
-	// The string contains 19 bytes of header-data...
-	option82_2_data = option82_2_data.substr(19,  string::npos);
+	// Debug
+	for ( const auto &ov : options_variables) {
+		string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
+		string res = ov.second;
+		interesting << "ov: " << var << " = " << res << "\n";
+        	flush(interesting);
+	}
 	interesting << "3\n";
         flush(interesting);
 
 
-	// Decode :-separated string of ascii-codes
-        stringstream ss(option82_2_data);
-        string token;
-        while(getline(ss, token, ':')) 
-        {
-                res += strtoul(token.c_str(), NULL, 16);
+	// Then we search the out-options for the placeholder
+	for ( const auto &opt_o : options_out ) {
+		for ( const auto &sub_o : options_out[opt_o.first]) {
+			string option_data;
+			int opt_code = opt_o.first;
+			int sub_code = 0;
+			// Debug
+			interesting << "od: " << to_string(opt_code) << "\n";
+        		flush(interesting);
+			if (sub_o.first > 0) {
+				sub_code = sub_o.first;
+				// Debug
+				interesting << "sd: " << to_string(sub_code) << "\n";
+        			flush(interesting);
+			}
+			// This must NOT be sanitized, as it might contain the placeholder-identificator which is supposed to be replaced later...
+			option_data = get4Option(response4_ptr, opt_code, sub_code, false);
+			// Debug
+			interesting << "od: " << option_data << "\n";
+        		flush(interesting);
+
+			for ( const auto &ov : options_variables) {
+				string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
+				string res = ov.second;
+
+       				if (option_data.find(var) != std::string::npos) {
+					
+					// Debug
+					interesting << "Replace " << var << " with " << res << " in option " << option_data  << "\n";
+        				flush(interesting);
+					// If the placeholder is present in the option-data, we replace it with the correct value
+					replace4Option(response4_ptr, opt_code, sub_code, option_data, var, res);
+				}
+			}
+		}
 	}
-	interesting << "4\n";
-        flush(interesting);
 
-	// Sanitize string before using it
-        regex sanitize ("[^A-z0-9-]"); 
-	res = regex_replace (res, sanitize, "_");
-	interesting << "5\n";
-        flush(interesting);
-
-	// Replace "variable" in original packet data
-	// 
-	// "option_data": { "data": "foo_bar_%OPTION82_1%_baz"; }
-	//
-	regex opt82_1 ("@OPTION82_1@");
-	regex opt82_2 ("@OPTION82_2@");
-
-	option43_1_data = regex_replace (option43_1_data, opt82_1, res);
-	option43_1_data = regex_replace (option43_1_data, opt82_2, res);
-	interesting << "6\n";
-        flush(interesting);
-
-	// add4Option(response4_ptr, DHO_BOOT_FILE_NAME, opt_value);
-
-	option43_ptr->delOption(1);
-	option43_1_ptr.reset(new OptionString(Option::V4, 1, option43_1_data));
-	option43_ptr->addOption(option43_1_ptr);
-
-	string option43_1_data2 = option43_1_ptr->toText();
-	interesting << "7 " << option43_1_data2 << "\n";
-        flush(interesting);
-	
-	
-	response4_ptr->addOption(option43_ptr);
-
-	/*
-	vector<char> option43_1_vector(option43_1_data.begin(), option43_1_data.end());
-	OptionPtr option43_1_option = Option(4, uint16_t 1, option43_1_vector.begin()+1, option43_1_vector.end()-1);
-
-	// new Option(V4, 1, option43_vector.begin()+1, option43_vector.end()-1)
-	
-	option43_ptr->addOption(option43_1_option);
-	// Option::addOption(option43_ptr, option43_1_option);
-	*/
-	// TODO: How to actually insert the new string into the packet?
-	//
-	// option43_ptr->setData(option43_1_data);
-
-        // Write the information to the log file.
-        interesting << "8 " << option82_2_data << " " << res << " " << option43_1_data << "\n";
-        // ... and to guard against a crash, we'll flush the output stream.
+	// Debug - we flush the file here in case we forget somewhere else
         flush(interesting);
     } catch (const NoSuchCalloutContext&) {
-        // No such element in the per-request context with the name "hwaddr".
-        // This means that the request was not an interesting, so do nothing
-        // and dismiss the exception.
         interesting << "Que Pasa\n";
         flush(interesting);
     }
@@ -142,29 +150,48 @@ int pkt4_send(CalloutHandle& handle) {
 }
 
 
+/// @brief Replace a placeholder in an option before adding it to the outgoing packet
+/// 
+/// @param response4_ptr IPV4 response packet to update
+/// @param opt_code DHCP standard numeric code of the option
+/// @param sub_code DHCP standard numeric code of the sub option
+/// @param option_data The original data in the option-field (from kea.conf)
+/// @param placeholder String to search for in the orignal option value
+/// @param replace_with String to replace the placeholder with
+void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string option_data, string placeholder, string replace_with) {
+	// Debug
+	interesting << "Replacing " << placeholder << " with " << replace_with << " in option " << option_data  << "\n";
+        flush(interesting);
+	option_data.replace(option_data.find(placeholder), placeholder.size(), replace_with);
+	// Debug
+	interesting << "New option-value: " << option_data << "\n";
+        flush(interesting);
+	add4Option(response4_ptr, opt_code, sub_code, option_data);
+}
+
 /// @brief Adds/updates are specific IPv4 string option in response packet.
 ///
-/// @param response IPV4 response packet to update
+/// @param response4_ptr IPV4 response packet to update
 /// @param opt_code DHCP standard numeric code of the option
+/// @param sub_code DHCP standard numeric code of the sub option
 /// @param opt_value String value of the option
-void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, std::string& opt_value, uint8_t sub_code = 0) {
-	// Remove the option if it exists.
-	//
+void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std::string& opt_value) {
+	// Debug
+	interesting << "Adding option-value: " << opt_value << " in " << to_string(opt_code) << "." << to_string(sub_code) << "\n";
+        flush(interesting);
 
 	if (sub_code > 0) {
 		OptionPtr main = response4_ptr->getOption(opt_code);
+		OptionPtr opt;
 		if (main) {
 			OptionPtr opt = opt->getOption(sub_code);
 			main->delOption(sub_code);
 		}
 		else {
-			main.reset(OptionString(Option::V4, opt_code, NULL));
-			OptionPtr opt = opt->getOption(sub_code);
+			opt = opt->getOption(sub_code);
 		}
 		opt.reset(new OptionString(Option::V4, sub_code, opt_value));
 		main->addOption(opt);
-		response4_ptr->addOption(main);
-		
 	}
 	else {
 		OptionPtr opt = response4_ptr->getOption(opt_code);
@@ -174,10 +201,67 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, std::string& opt_value
 		opt.reset(new OptionString(Option::V4, opt_code, opt_value));
 		response4_ptr->addOption(opt);
 	}
+}
 
-	// Now add the option.
-	// response->addOption(opt);
+/// @brief Gets a string value from an option (or sub option) code
+///
+/// @param response4_ptr IPV4 response packet to update
+/// @param opt_code DHCP standard numeric code of the option
+/// @param sub_code DHCP standard numeric code of the sub option
+/// @param sanitize Do some simple cleanup of the string before returning it
+string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bool sanitize) {
+	// Debug
+	interesting << "Getting option: " << to_string(opt_code) <<  "." << to_string(sub_code) << "\n";
+        flush(interesting);
+	
+	string option_data;
+	if (sub_code > 0) {
+		OptionPtr opt_ptr = response4_ptr->getOption(opt_code);
+		if (opt_ptr) {
+			OptionPtr sub_ptr = opt_ptr->getOption(sub_code);
+			if (sub_ptr) {
+				option_data = sub_ptr->toString();
+			}
+		}
+	}
+	else {
+		OptionPtr opt_ptr = response4_ptr->getOption(opt_code);
+		if (opt_ptr) {
+			option_data = opt_ptr->toString();
+		}
+	}
+
+	// Decode :-separated string of ascii-codes
+	// TODO: Find a better way to do this...
+       	if (option_data.find("type=") == 0) {
+		// Debug
+		interesting << "Decoding data: " << option_data << "\n";
+        	flush(interesting);
+		option_data = option_data.substr(19,  string::npos);
+        	stringstream ss(option_data);
+        	string token;
+		option_data = "";
+        	while(getline(ss, token, ':')) 
+        	{
+        	        option_data += strtoul(token.c_str(), NULL, 16);
+		}
+	}
+	
+	if (sanitize > 0) {
+		// Sanitize the string if needed
+		// Debug
+		interesting << "Sanitizing data: " << option_data << "\n";
+        	flush(interesting);
+        	regex sanitize ("[^A-z0-9-]"); 
+		option_data = regex_replace (option_data, sanitize, "_");
+	}
+	// Debug
+	interesting << "Returning data: " << option_data << "\n";
+        flush(interesting);
+	// Return it	
+	return option_data;
 }
 
 
 }
+
