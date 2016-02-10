@@ -71,7 +71,7 @@ and
 </pre>
 
 ### Placeholder / variables
-The following placeholders og "variables" are currently defined
+The following placeholders or "variables" are currently defined
 
 * @HWADDR@ => hardware address of client in "normal" (colon separated) format: <em>cc:c1:12:34:2d:41</em>
 * @HWADDR_CISCO@ => hardware address in "cisco format": <em>ccc1.1234.2d41</em>
