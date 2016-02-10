@@ -176,14 +176,16 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std:
 		OptionPtr main = response4_ptr->getOption(opt_code);
 		OptionPtr opt;
 		if (main) {
-			OptionPtr opt = opt->getOption(sub_code);
+			opt = main->getOption(sub_code);
 			main->delOption(sub_code);
+			opt.reset(new OptionString(Option::V4, sub_code, opt_value));
+			main->addOption(opt);
 		}
 		else {
-			opt = opt->getOption(sub_code);
+			interesting << "No option " << to_string(opt_code) << "found\n";
+       			flush(interesting);
+			return;
 		}
-		opt.reset(new OptionString(Option::V4, sub_code, opt_value));
-		main->addOption(opt);
 	}
 	else {
 		OptionPtr opt = response4_ptr->getOption(opt_code);
@@ -193,6 +195,8 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std:
 		opt.reset(new OptionString(Option::V4, opt_code, opt_value));
 		response4_ptr->addOption(opt);
 	}
+	interesting << "Option added\n";
+       	flush(interesting);
 }
 
 /// @brief Gets a string value from an option (or sub option) code
