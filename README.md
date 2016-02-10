@@ -29,6 +29,10 @@ The config below will take the string from sub option 002 in an option 82 reques
   
 	"option-data": [
 	{
+		"name": "boot-file-name",
+		"data": "path/to/config-@HWADDR_CISCO@"
+	},
+	{
 		"name": "vendor-encapsulated-options",
 		"csv-format": false
 	},
@@ -61,7 +65,10 @@ And the DHCPREPLY will contain
 options:
     type=001, len=032: "path/to/config-<b>customer-id-10000</b>" (string)
 </pre>
-
+and
+<pre>
+  type=067, len=029: "path/to/config-<b>ccc1.1234.2d41</b>" (string)
+</pre>
 
 ## Build
 ```
