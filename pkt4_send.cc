@@ -27,6 +27,34 @@ int pkt4_send(CalloutHandle& handle) {
         Pkt4Ptr response4_ptr;
         handle.getArgument("response4", response4_ptr);
 
+	// Format mac-addresses
+	string hwaddr;
+	string hwaddr_cisco;
+	string hwaddr_windows;
+	handle.getContext("hwaddr", hwaddr);
+        regex colon (":"); 
+	hwaddr_windows = regex_replace (hwaddr, colon, "-");
+	// There must be a better way to do this...
+	hwaddr_cisco = hwaddr;
+	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, "");
+	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, ".");
+	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, "");
+	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, ".");
+	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, "");
+	
+
+
+	string ipaddr = response4_ptr->getYiaddr().toText();
+	const char *ipchar = ipaddr.c_str();
+
+	std::stringstream iptream;
+	iptream << std::hex << ntohl(inet_addr(ipchar));
+	std::string ipaddr_hex = iptream.str();
+
+	
+	// string ipaddr_hex = to_string(sprintf("%x", inet_addr(ipchar)));
+
+
 	// Identificator for variables in kea.conf
 	// IE @HWADDR@ 
 	string PRE_POST_FIX = "@";
@@ -85,12 +113,13 @@ int pkt4_send(CalloutHandle& handle) {
 	// Also get some other variables
 	// Note that all values here are strings so some might have to be casted
 	// TODO: Really add these...
-	options_variables["HWADDR"] = "hwaddr";
-	options_variables["IPADDR"] = "ipaddr";
+	options_variables["HWADDR"] = hwaddr;
+	options_variables["IPADDR"] = ipaddr;
 
 	// ... and generate a few variants that might be useful
-	options_variables["HWADDR_CISCO"] = "hwaddr_cisco";	// 1234.5678.90ab
-	options_variables["IPADDR_HEX"] = "ipaddr_hex";		// c39f0a01
+	options_variables["HWADDR_CISCO"] = hwaddr_cisco;	// 1234.5678.90ab
+	options_variables["HWADDR_WINDOWS"] = hwaddr_windows;	// 12-34-56-78-90-ab
+	options_variables["IPADDR_HEX"] = ipaddr_hex;		// c39f0a01
 
 	// Debug
 	interesting << "All defined options and variables:\n";
