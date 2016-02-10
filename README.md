@@ -73,21 +73,14 @@ and
 ### Placeholder / variables
 The following placeholders og "variables" are currently defined
 
-@HWADDR@ => hardware address of client in "normal" (colon separated) format: <em>cc:c1:12:34:2d:41</em>
-
-@HWADDR_CISCO@ => hardware address in "cisco format": <em>ccc1.1234.2d41</em>
-
-@HWADDR_WINDOWS@ => hardware address in "windows format" (dash separated): <em>cc-c1-12-34-2d-41</em>
-
-@IPADDR@ => IP address assigned to client: <em>172.16.1.100</em>
-
-@IPADDR_HEX@ = IP address assigned to client in hex: <em>ac100164</em>
-
-@OPTION_82_1@ = Value of sub option 1 in Option 82 ("Agent Circuit ID") (sanitized): <em>Router01_ge-0_0_4_1</em>
-
-@OPTION_82_2@ = Value of sub option 2 in Option 82 ("Agent Remote ID") (sanitized): <em>customer-id-100000</em>
-
-@OPTION_82_6@ = Value of sub option 6 in Option 82 ("Subscriber-ID") (sanitized): <em>customer-id-100000</em>
+* @HWADDR@ => hardware address of client in "normal" (colon separated) format: <em>cc:c1:12:34:2d:41</em>
+* @HWADDR_CISCO@ => hardware address in "cisco format": <em>ccc1.1234.2d41</em>
+* @HWADDR_WINDOWS@ => hardware address in "windows format" (dash separated): <em>cc-c1-12-34-2d-41</em>
+* @IPADDR@ => IP address assigned to client: <em>172.16.1.100</em>
+* @IPADDR_HEX@ = IP address assigned to client in hex: <em>ac100164</em>
+* @OPTION_82_1@ = Value of sub option 1 in Option 82 ("Agent Circuit ID") (sanitized): <em>Router01_ge-0_0_4_1</em>
+* @OPTION_82_2@ = Value of sub option 2 in Option 82 ("Agent Remote ID") (sanitized): <em>customer-id-100000</em>
+* @OPTION_82_6@ = Value of sub option 6 in Option 82 ("Subscriber-ID") (sanitized): <em>customer-id-100000</em>
 
 
 ## Build
