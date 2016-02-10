@@ -30,6 +30,17 @@ int pkt4_receive(CalloutHandle& handle) {
 	interesting << "Found hwaddr " << hwaddr << "\n";
 	flush(interesting);
 	handle.setContext("hwaddr", hwaddr);
+
+	// Get hostname from query
+	string hostname;
+	OptionPtr option12 = query4_ptr->getOption(12);
+	if (option12) {
+		hostname = option12->toString();
+	}
+	interesting << "Found hostname " << hostname << "\n";
+	flush(interesting);
+	handle.setContext("hostname", hostname);
+
     	return (0);
 };
 }

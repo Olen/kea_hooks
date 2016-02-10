@@ -18,7 +18,7 @@ using namespace std;
 extern "C" {
 
 void add4Option(Pkt4Ptr& response, uint8_t opt_code, uint8_t sub_code, std::string& opt_value);
-void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string option_data, string placeholder, string replace_with);
+void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string &option_data, string placeholder, string replace_with);
 string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bool sanitize = 1);
 
 // This callout is called at the "pkt4_send" hook.
@@ -43,6 +43,9 @@ int pkt4_send(CalloutHandle& handle) {
 	hwaddr_cisco.replace(hwaddr_cisco.find(":"), 1, "");
 	
 
+	// hostname 
+	string hostname;
+	handle.getContext("hostname", hostname);
 
 	string ipaddr = response4_ptr->getYiaddr().toText();
 	const char *ipchar = ipaddr.c_str();
@@ -112,7 +115,7 @@ int pkt4_send(CalloutHandle& handle) {
 
 	// Also get some other variables
 	// Note that all values here are strings so some might have to be casted
-	// TODO: Really add these...
+	options_variables["HOSTNAME"] = hostname;
 	options_variables["HWADDR"] = hwaddr;
 	options_variables["IPADDR"] = ipaddr;
 
@@ -179,7 +182,7 @@ int pkt4_send(CalloutHandle& handle) {
 /// @param option_data The original data in the option-field (from kea.conf)
 /// @param placeholder String to search for in the orignal option value
 /// @param replace_with String to replace the placeholder with
-void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string option_data, string placeholder, string replace_with) {
+void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string &option_data, string placeholder, string replace_with) {
 	// Debug
 	interesting << "Replacing " << placeholder << " with " << replace_with << " in option " << option_data  << "\n";
         flush(interesting);
