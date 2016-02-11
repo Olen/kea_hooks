@@ -12,7 +12,7 @@ extern "C" {
 
 
 // This callout is called at the "pkt4_receive" hook.
-// All we want to do is store the hwaddr so we can use it later
+// All we want to do is store the hwaddr and a few other vars so we can use it later
 int pkt4_receive(CalloutHandle& handle) {
 	// A pointer to the packet is passed to the callout via a "boost" smart
 	// pointer. The include file "pkt4.h" typedefs a pointer to the Pkt4
@@ -40,6 +40,16 @@ int pkt4_receive(CalloutHandle& handle) {
 	interesting << "Found hostname " << hostname << "\n";
 	flush(interesting);
 	handle.setContext("hostname", hostname);
+
+	// Get class_id from query
+	string vendor_class_id;
+	OptionPtr option60 = query4_ptr->getOption(60);
+	if (option60) {
+		vendor_class_id = option60->toString();
+	}
+	interesting << "Found vendor_class_id " << vendor_class_id << "\n";
+	flush(interesting);
+	handle.setContext("vendor_class_id", vendor_class_id);
 
     	return (0);
 };

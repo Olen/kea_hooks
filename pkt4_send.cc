@@ -47,15 +47,18 @@ int pkt4_send(CalloutHandle& handle) {
 	string hostname;
 	handle.getContext("hostname", hostname);
 
+	// Vendor class id
+	string vendor_class_id;
+	handle.getContext("vendor_class_id", vendor_class_id);
+
+	// IP address
 	string ipaddr = response4_ptr->getYiaddr().toText();
 	const char *ipchar = ipaddr.c_str();
 
-	std::stringstream iptream;
-	iptream << std::hex << ntohl(inet_addr(ipchar));
-	std::string ipaddr_hex = iptream.str();
+	stringstream iptream;
+	iptream << hex << ntohl(inet_addr(ipchar));
+	string ipaddr_hex = iptream.str();
 
-	
-	// string ipaddr_hex = to_string(sprintf("%x", inet_addr(ipchar)));
 
 
 	// Identificator for variables in kea.conf
@@ -83,6 +86,8 @@ int pkt4_send(CalloutHandle& handle) {
 	// Also notice that options without sub options will use sub option id = 0.  
 	options_out[43][1] = 1;
 	options_out[43][2] = 1;
+	options_out[43][3] = 1;
+	options_out[43][4] = 1;
 	// TODO: Add more options we can write to (hostname, others?)
 	options_out[DHO_BOOT_FILE_NAME][0] = 1;
 
@@ -123,6 +128,8 @@ int pkt4_send(CalloutHandle& handle) {
 	options_variables["HWADDR_CISCO"] = hwaddr_cisco;	// 1234.5678.90ab
 	options_variables["HWADDR_WINDOWS"] = hwaddr_windows;	// 12-34-56-78-90-ab
 	options_variables["IPADDR_HEX"] = ipaddr_hex;		// c39f0a01
+
+	options_variables["VENDOR_CLASS_ID"] = vendor_class_id;
 
 	// Debug
 	interesting << "All defined options and variables:\n";
