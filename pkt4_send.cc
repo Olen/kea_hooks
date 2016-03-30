@@ -193,7 +193,13 @@ void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, 
 	// Debug
 	interesting << "Replacing " << placeholder << " with " << replace_with << " in option " << option_data  << "\n";
         flush(interesting);
-	option_data.replace(option_data.find(placeholder), placeholder.size(), replace_with);
+
+	size_t found;
+	found = option_data.find(placeholder);
+	while (found != string::npos) {
+		option_data.replace(option_data.find(placeholder), placeholder.size(), replace_with);
+		found = option_data.find(placeholder);
+	}
 	// Debug
 	interesting << "New option-value: " << option_data << "\n";
         flush(interesting);
