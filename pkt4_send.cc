@@ -1,7 +1,8 @@
 #include <hooks/hooks.h>
 #include <dhcp/pkt4.h>
 #include <dhcp/option_string.h>
-#include "library_common.h"
+#include "options_to_options.h"
+#include "options_to_options_log.h"
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -12,7 +13,9 @@
 
 using namespace isc::dhcp;
 using namespace isc::hooks;
+using namespace isc::log;
 using namespace std;
+using namespace options_to_options;
 
 
 extern "C" {
@@ -23,10 +26,12 @@ string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bo
 
 // This callout is called at the "pkt4_send" hook.
 int pkt4_send(CalloutHandle& handle) {
+    LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_INIT_HOOK).arg("pkt4_send");
     try {
+
+
         Pkt4Ptr response4_ptr;
         handle.getArgument("response4", response4_ptr);
-
 	// Format mac-addresses
 	string hwaddr;
 	string hwaddr_cisco;
@@ -71,9 +76,7 @@ int pkt4_send(CalloutHandle& handle) {
 	// Not sure if map is the best way to do this, though...
 	map<int,map<int,bool>> options_in;
 	map<int,map<int,bool>> options_out;
-
-	// TODO:
-	// Add proper logging, not use the "interesting" file
+	map<int,map<int,string>> options_initial;
 
 	// Options we will read
 	options_in[82][1] = 1;
@@ -96,22 +99,14 @@ int pkt4_send(CalloutHandle& handle) {
 		for ( const auto &sub_i : options_in[opt_i.first]) {
 			int opt_code = opt_i.first;
 			int sub_code = 0;
-			// Debug
-			interesting << "oc: " << to_string(opt_code) << "\n";
-        		flush(interesting);
+			LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("OC: " + to_string(opt_code));
 			if (sub_i.first > 0) {
 				sub_code = sub_i.first;
-				// Debug
-				interesting << "Setting OPTION_" << to_string(opt_code) << "_" << to_string(sub_code) << "\n";
-        			flush(interesting);
-
+				LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Setting OPTION_" + to_string(opt_code) + "_" + to_string(sub_code));
 				options_variables["OPTION_" + to_string(opt_code) + "_" + to_string(sub_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
 			}
 			else {
-				// Debug
-				interesting << "Setting OPTION_" << to_string(opt_code) << "\n";
-        			flush(interesting);
-
+				LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Setting OPTION_" + to_string(opt_code));
 				options_variables["OPTION_" + to_string(opt_code)] = get4Option(response4_ptr, opt_code, sub_code, true);
 			}
 		}
@@ -131,14 +126,12 @@ int pkt4_send(CalloutHandle& handle) {
 
 	options_variables["VENDOR_CLASS_ID"] = vendor_class_id;
 
-	// Debug
-	interesting << "All defined options and variables:\n";
-        flush(interesting);
+	// Debug 
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("All defined options and variables:");
 	for ( const auto &ov : options_variables) {
 		string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
 		string res = ov.second;
-		interesting << "ov: " << var << " = " << res << "\n";
-        	flush(interesting);
+		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("OV: " + var + " = " + res);
 	}
 
 	// Then we search the out-options for the placeholder
@@ -150,35 +143,60 @@ int pkt4_send(CalloutHandle& handle) {
 			if (sub_o.first > 0) {
 				sub_code = sub_o.first;
 			}
-			// Debug
-			interesting << "Getting writable option " << to_string(opt_code) << "." << to_string(sub_code) << "\n";
-        		flush(interesting);
+			LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Getting writable option " + to_string(opt_code) + "." + to_string(sub_code));
 			// This must NOT be sanitized, as it might contain the placeholder-identificator which is supposed to be replaced later...
 			option_data = get4Option(response4_ptr, opt_code, sub_code, false);
+			options_initial[opt_code][sub_code] = option_data;
 
 			for ( const auto &ov : options_variables) {
 				string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
 				string res = ov.second;
-
+				LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Searching for " + var + " in " + option_data);
        				if (option_data.find(var) != std::string::npos) {
-					// Debug
-					interesting << "Replace " << var << " with " << res << " in option " << option_data  << "\n";
-        				flush(interesting);
+					LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Replace " + var + " with " + res + " in option " + option_data);
 					// If the placeholder is present in the option-data, we replace it with the correct value
 					replace4Option(response4_ptr, opt_code, sub_code, option_data, var, res);
 				}
 			}
 		}
 	}
-
-	// Debug - we flush the file here in case we forget somewhere else
-        flush(interesting);
+	handle.setContext("options_initial", options_initial);
     } catch (const NoSuchCalloutContext&) {
-        interesting << "Que Pasa\n";
-        flush(interesting);
+	LOG_ERROR(options_to_options_logger, OPTIONS_TO_OPTIONS_PKT_SND).arg("No Callout");
     }
     return (0);
 }
+
+
+// This callout is called at the "buffer4_send" hook.
+int buffer4_send(CalloutHandle& handle) {
+    LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_INIT_HOOK).arg("buffer4_send");
+    try {
+        // The only purpose of this hook is to reset the original "reply" back to its initial state 
+        // to get ready to process the next request
+        Pkt4Ptr response4_ptr;
+        handle.getArgument("response4", response4_ptr);
+
+        map<int,map<int,string>> options_initial;
+
+        handle.getContext("options_initial", options_initial);
+
+        for ( const auto &opt_i : options_initial ) {
+                for ( const auto &sub_i : options_initial[opt_i.first]) {
+                        string init_value = sub_i.second;
+			LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_BUF_SND).arg("Resetting opt " + to_string(opt_i.first) + " sub " + to_string(sub_i.first) + " to " + init_value);
+                        add4Option(response4_ptr, opt_i.first, sub_i.first, init_value);
+                }
+        }
+    } catch (const NoSuchCalloutContext&) {
+	LOG_ERROR(options_to_options_logger, OPTIONS_TO_OPTIONS_BUF_SND).arg("No Callout");
+    }
+    return (0);
+}
+
+
+
+
 
 
 /// @brief Replace a placeholder in an option before adding it to the outgoing packet
@@ -190,9 +208,7 @@ int pkt4_send(CalloutHandle& handle) {
 /// @param placeholder String to search for in the orignal option value
 /// @param replace_with String to replace the placeholder with
 void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, string &option_data, string placeholder, string replace_with) {
-	// Debug
-	interesting << "Replacing " << placeholder << " with " << replace_with << " in option " << option_data  << "\n";
-        flush(interesting);
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Replacing " + placeholder + " with " + replace_with + " in option " + option_data);
 
 	size_t found;
 	found = option_data.find(placeholder);
@@ -200,9 +216,7 @@ void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, 
 		option_data.replace(option_data.find(placeholder), placeholder.size(), replace_with);
 		found = option_data.find(placeholder);
 	}
-	// Debug
-	interesting << "New option-value: " << option_data << "\n";
-        flush(interesting);
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("New option-value: " + option_data);
 	add4Option(response4_ptr, opt_code, sub_code, option_data);
 }
 
@@ -213,10 +227,7 @@ void replace4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, 
 /// @param sub_code DHCP standard numeric code of the sub option
 /// @param opt_value String value of the option
 void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std::string& opt_value) {
-	// Debug
-	interesting << "Adding option-value: " << opt_value << " in " << to_string(opt_code) << "." << to_string(sub_code) << "\n";
-        flush(interesting);
-
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Adding option-value: " + opt_value + " in " + to_string(opt_code) + "." + to_string(sub_code));
 	if (sub_code > 0) {
 		OptionPtr main = response4_ptr->getOption(opt_code);
 		OptionPtr opt;
@@ -227,8 +238,7 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std:
 			main->addOption(opt);
 		}
 		else {
-			interesting << "No option " << to_string(opt_code) << "found\n";
-       			flush(interesting);
+			LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("No option " + to_string(opt_code) + " found");
 			return;
 		}
 	}
@@ -240,8 +250,7 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std:
 		opt.reset(new OptionString(Option::V4, opt_code, opt_value));
 		response4_ptr->addOption(opt);
 	}
-	interesting << "Option added\n";
-       	flush(interesting);
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Option added");
 }
 
 /// @brief Gets a string value from an option (or sub option) code
@@ -251,10 +260,7 @@ void add4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, std:
 /// @param sub_code DHCP standard numeric code of the sub option
 /// @param sanitize Do some simple cleanup of the string before returning it
 string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bool sanitize) {
-	// Debug
-	interesting << "Getting option: " << to_string(opt_code) <<  "." << to_string(sub_code) << "\n";
-        flush(interesting);
-	
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Getting option " + to_string(opt_code) + "." + to_string(sub_code));
 	string option_data;
 	if (sub_code > 0) {
 		OptionPtr opt_ptr = response4_ptr->getOption(opt_code);
@@ -275,9 +281,7 @@ string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bo
 	// Decode :-separated string of ascii-codes
 	// TODO: Find a better way to do this...
        	if (option_data.find("type=") == 0) {
-		// Debug
-		interesting << "Decoding data: " << option_data << "\n";
-        	flush(interesting);
+		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Decoding data: " + option_data);
 		option_data = option_data.substr(19,  string::npos);
         	stringstream ss(option_data);
         	string token;
@@ -290,15 +294,11 @@ string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bo
 	
 	if (sanitize > 0) {
 		// Sanitize the string if needed
-		// Debug
-		interesting << "Sanitizing data: " << option_data << "\n";
-        	flush(interesting);
+		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Sanitizing data: " + option_data);
         	regex sanitize ("[^A-z0-9-]"); 
 		option_data = regex_replace (option_data, sanitize, "_");
 	}
-	// Debug
-	interesting << "Returning data: " << option_data << "\n";
-        flush(interesting);
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Returning data: " + option_data);
 	// Return it	
 	return option_data;
 }

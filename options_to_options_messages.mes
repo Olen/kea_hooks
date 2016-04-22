@@ -1,0 +1,15 @@
+% OPTIONS_TO_OPTIONS_LOAD Module %1
+Load/unload of the module
+
+% OPTIONS_TO_OPTIONS_INIT_HOOK Hook %1 initialized by new packet
+When a packet hits the hook
+
+% OPTIONS_TO_OPTIONS_PKT_RCV %1
+Regular log messages when we receive packets
+
+% OPTIONS_TO_OPTIONS_PKT_SND %1
+Regular log messages when we send packets
+
+% OPTIONS_TO_OPTIONS_BUF_SND %1
+Regular log messages in buffer_send
+
