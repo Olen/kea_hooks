@@ -35,6 +35,11 @@ int pkt4_receive(CalloutHandle& handle) {
 	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_RCV).arg("Found hwaddr " + hwaddr);
 	handle.setContext("hwaddr", hwaddr);
 
+	// Get Giaddr
+	isc::asiolink::IOAddress giaddr = query4_ptr->getGiaddr();
+	LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_RCV).arg("Found giaddr " + giaddr.toText());
+	handle.setContext("giaddr", giaddr.toBytes());
+
 	// Get hostname from query
 	string hostname;
 	OptionPtr option12 = query4_ptr->getOption(12);

@@ -56,6 +56,11 @@ int pkt4_send(CalloutHandle& handle) {
 	string vendor_class_id;
 	handle.getContext("vendor_class_id", vendor_class_id);
 
+	// Giaddr
+	// string giaddr;
+	vector<uint8_t> giaddr;
+	handle.getContext("giaddr", giaddr);
+
 	// IP address
 	string ipaddr = response4_ptr->getYiaddr().toText();
 	const char *ipchar = ipaddr.c_str();
@@ -93,6 +98,7 @@ int pkt4_send(CalloutHandle& handle) {
 	options_out[43][4] = 1;
 	// TODO: Add more options we can write to (hostname, others?)
 	options_out[DHO_BOOT_FILE_NAME][0] = 1;
+	options_out[DHO_ROUTERS][0] = 1;
 
 	// Get the option-values from the dhcp-request
 	for ( const auto &opt_i : options_in ) {
@@ -119,6 +125,13 @@ int pkt4_send(CalloutHandle& handle) {
 	options_variables["HWADDR"] = hwaddr;
 	options_variables["IPADDR"] = ipaddr;
 
+	if (!giaddr.empty()) {
+		string giaddress;
+		giaddress.resize(giaddr.size());
+		memmove(&giaddress[0], &giaddr[0], giaddr.size());
+		options_variables["GIADDR"] = giaddress;
+	}
+
 	// ... and generate a few variants that might be useful
 	options_variables["HWADDR_CISCO"] = hwaddr_cisco;	// 1234.5678.90ab
 	options_variables["HWADDR_WINDOWS"] = hwaddr_windows;	// 12-34-56-78-90-ab
@@ -144,10 +157,17 @@ int pkt4_send(CalloutHandle& handle) {
 				sub_code = sub_o.first;
 			}
 			LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Getting writable option " + to_string(opt_code) + "." + to_string(sub_code));
+
 			// This must NOT be sanitized, as it might contain the placeholder-identificator which is supposed to be replaced later...
 			option_data = get4Option(response4_ptr, opt_code, sub_code, false);
 			options_initial[opt_code][sub_code] = option_data;
-
+			if (opt_code == DHO_ROUTERS) {
+				// Special handling of ROUTERS if set to 0.0.0.0 -> set to giaddr
+				if (option_data == "0.0.0.0") {
+					LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Router = 0.0.0.0 -> Setting router to @GIADDR@");
+					option_data = "@GIADDR@";
+				}
+			}
 			for ( const auto &ov : options_variables) {
 				string var = PRE_POST_FIX + ov.first + PRE_POST_FIX;
 				string res = ov.second;
@@ -281,14 +301,17 @@ string get4Option(Pkt4Ptr& response4_ptr, uint8_t opt_code, uint8_t sub_code, bo
 	// Decode :-separated string of ascii-codes
 	// TODO: Find a better way to do this...
        	if (option_data.find("type=") == 0) {
-		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Decoding data: " + option_data);
+		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Decoding data-1: " + option_data);
 		option_data = option_data.substr(19,  string::npos);
-        	stringstream ss(option_data);
-        	string token;
-		option_data = "";
-        	while(getline(ss, token, ':')) 
-        	{
-        	        option_data += strtoul(token.c_str(), NULL, 16);
+		LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Decoding data-2: " + option_data);
+		if (option_data.find(":") != string::npos) {
+			stringstream ss(option_data);
+			string token;
+			option_data = "";
+			while(getline(ss, token, ':')) {
+				LOG_DEBUG(options_to_options_logger, MIN_DEBUG_LEVEL, OPTIONS_TO_OPTIONS_PKT_SND).arg("Token: " + token);
+				option_data += strtoul(token.c_str(), NULL, 16);
+			}
 		}
 	}
 	
