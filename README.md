@@ -73,6 +73,7 @@ and
 ### Placeholder / variables
 The following placeholders or "variables" are currently defined
 
+* @GIADDR@ => giaddr.  <em>172.16.1.1</em> (see special note below)
 * @HWADDR@ => hardware address of client in "normal" (colon separated) format: <em>cc:c1:12:34:2d:41</em>
 * @HWADDR_CISCO@ => hardware address in "cisco format": <em>ccc1.1234.2d41</em>
 * @HWADDR_WINDOWS@ => hardware address in "windows format" (dash separated): <em>cc-c1-12-34-2d-41</em>
@@ -81,6 +82,11 @@ The following placeholders or "variables" are currently defined
 * @OPTION_82_1@ = Value of sub option 1 in Option 82 ("Agent Circuit ID") (sanitized): <em>Router01_ge-0_0_4_1</em>
 * @OPTION_82_2@ = Value of sub option 2 in Option 82 ("Agent Remote ID") (sanitized): <em>customer-id-100000</em>
 * @OPTION_82_6@ = Value of sub option 6 in Option 82 ("Subscriber-ID") (sanitized): <em>customer-id-100000</em>
+
+### Note about giaddr
+The hook also supports a special case where you can automatically insert the "giaddr" as default router in the DHCP-reply.  Simply set Option 3 ("routers") to "0.0.0.0" in the kea-config, and that value will be replaced by the data from "giaddr" in the request (if it is set).
+
+This might sound like a strange thing to do, but it allows you to greatly simplify the config for certain cases.  You can have *one* common subnet defined for several locations, and each device will get the correct default gateway.  This might be feasible in situations where the clients are not supposed to connect to each other - like provisioning of CPEs or other devices.
 
 
 ## Build
