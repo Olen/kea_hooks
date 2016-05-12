@@ -86,7 +86,7 @@ The following placeholders or "variables" are currently defined
 ### Note about giaddr
 The hook also supports a special case where you can automatically insert the "giaddr" as default router in the DHCP-reply.  Simply set Option 3 ("routers") to "0.0.0.0" in the kea-config, and that value will be replaced by the data from "giaddr" in the request (if it is set).
 
-This might sound like a strange thing to do, but it allows you to greatly simplify the config for certain cases.  You can have *one* common subnet defined for several locations, and each device will get the correct default gateway.  This might be feasible in situations where the clients are not supposed to connect to each other - like provisioning of CPEs or other devices.
+This might sound like a strange thing to do, but it allows you to greatly simplify the config for certain cases.  You can have *one* common subnet defined for several locations (behind different routers, acting as dhcp-relays), and each device will get the correct default gateway.  This might be feasible in situations where the clients are not supposed to connect to each other - like provisioning of CPEs or other devices.
 
 
 ## Build
