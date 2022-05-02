@@ -1,6 +1,14 @@
 # kea_hooks
 
 ## Options to Options
+
+***UPDATE***
+MOST of the functionality in this hook has since been replaced by a built in hook:
+https://kea.readthedocs.io/en/latest/arm/hooks.html#flex-option-flexible-option-for-option-value-settings
+
+
+
+
 This hook takes the value from different options in a DHCPREQUEST and inserts them into (other) options in a DHCPREPLY
 
 Example usage is to take the value from an Option 82 string, and insert it in an Option 43 sub option, to direct the dhcp client to the correct config file in an auto provisioning scenario.
